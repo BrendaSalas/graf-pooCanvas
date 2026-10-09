@@ -16,7 +16,6 @@ class Ball {
         this.startY = y;
         this.startSpeedX = speedX;
         this.startSpeedY = speedY;
-
         this.radius = radius;
         this.color = color;
 
@@ -26,10 +25,8 @@ class Ball {
     resetToStart() {
         this.x = this.startX;
         this.y = this.startY;
-
         this.speedX = this.startSpeedX;
         this.speedY = this.startSpeedY;
-
         this.lastPaddleHit = "";
     }
 
@@ -72,7 +69,7 @@ class Ball {
         }
     }
 
-    // Reiniciar una pelota cuando sale del campo
+    // Reiniciar pelota cuando sale del campo
     reset(direction) {
         this.x = canvas.width / 2;
 
@@ -100,6 +97,7 @@ class Paddle {
         this.y = y;
         this.width = width;
         this.height = height;
+        this.baseHeight = height;
         this.color = color;
         this.speed = speed;
     }
@@ -109,10 +107,10 @@ class Paddle {
 
         ctx.shadowColor = this.color;
         ctx.shadowBlur = 12;
-
         ctx.fillStyle = this.color;
 
         ctx.beginPath();
+
         ctx.roundRect(
             this.x,
             this.y,
@@ -134,7 +132,6 @@ class Paddle {
             this.y += this.speed;
         }
 
-        // Evitar que la paleta salga del canvas
         this.y = Math.max(
             0,
             Math.min(
@@ -144,39 +141,136 @@ class Paddle {
         );
     }
 
-    // Movimiento automático de la computadora
-    autoMove(balls) {
+    // ======================================
+    // CPU INTELIGENTE
+    // ======================================
 
-        // Detectar las pelotas que se acercan a la CPU
+    autoMove(balls) {
+        // Solo considerar pelotas que se dirigen a la CPU
         const incoming = balls
             .filter(ball =>
                 ball.speedX > 0 &&
-                ball.x < this.x
+                ball.x < this.x + this.width
             )
-            .map(ball => ({
-                ball: ball,
-                eta: (this.x - ball.x) / ball.speedX
-            }))
+            .map(ball => {
+                const distance =
+                    this.x - (ball.x + ball.radius);
+
+                const eta = Math.max(
+                    0,
+                    distance / ball.speedX
+                );
+
+                // Predecir la posición vertical al llegar
+                const minY = ball.radius;
+                const maxY = canvas.height - ball.radius;
+                const range = maxY - minY;
+
+                let predictedY =
+                    ball.y + ball.speedY * eta;
+
+                // Calcular los rebotes contra techo y suelo
+                if (range > 0) {
+                    let position =
+                        (predictedY - minY) % (2 * range);
+
+                    if (position < 0) {
+                        position += 2 * range;
+                    }
+
+                    if (position > range) {
+                        position = 2 * range - position;
+                    }
+
+                    predictedY = minY + position;
+                }
+
+                return {
+                    ball: ball,
+                    eta: eta,
+                    targetY: predictedY
+                };
+            })
             .sort((a, b) => a.eta - b.eta);
 
-        // Si ninguna pelota se aproxima, esperar
+        // Si ninguna pelota se acerca, volver al centro
         if (incoming.length === 0) {
+            const centerY = canvas.height / 2;
+            const desiredY = centerY - this.height / 2;
+            const difference = desiredY - this.y;
+
+            if (Math.abs(difference) > this.speed) {
+                this.y +=
+                    Math.sign(difference) * this.speed;
+            } else {
+                this.y = desiredY;
+            }
+
+            this.y = Math.max(
+                0,
+                Math.min(
+                    canvas.height - this.height,
+                    this.y
+                )
+            );
+
             return;
         }
 
-        // Seguir la pelota que llegará primero
-        const target = incoming[0].ball;
+        // Seleccionar la pelota que llegará primero
+        const target = incoming[0];
 
-        const targetCenter = target.y;
-        const paddleCenter = this.y + this.height / 2;
+        // Comprobar si hay varias pelotas que llegarán
+        // en un intervalo corto y a alturas similares
+        const simultaneous = incoming.filter(item =>
+            item.eta <= target.eta + 12 &&
+            Math.abs(item.targetY - target.targetY) <
+                this.baseHeight
+        );
 
-        const deadZone = 5;
-
-        if (targetCenter < paddleCenter - deadZone) {
-            this.move("up");
-        } else if (targetCenter > paddleCenter + deadZone) {
-            this.move("down");
+        // Ampliar temporalmente la paleta para cubrir mejor
+        // las pelotas que se aproximan en grupo
+        if (simultaneous.length >= 2) {
+            this.height = Math.min(
+                canvas.height,
+                this.baseHeight + 60
+            );
+        } else {
+            this.height = this.baseHeight;
         }
+
+        // Evitar que la paleta quede fuera de la cancha
+        this.y = Math.max(
+            0,
+            Math.min(
+                canvas.height - this.height,
+                this.y
+            )
+        );
+
+        // Centrar la paleta en el punto de impacto previsto
+        const desiredY =
+            target.targetY - this.height / 2;
+
+        const difference = desiredY - this.y;
+
+        // Velocidad elevada para reaccionar rápidamente
+        const cpuSpeed = 13;
+
+        if (Math.abs(difference) > cpuSpeed) {
+            this.y += Math.sign(difference) * cpuSpeed;
+        } else {
+            this.y = desiredY;
+        }
+
+        // Limitar movimiento al área de juego
+        this.y = Math.max(
+            0,
+            Math.min(
+                canvas.height - this.height,
+                this.y
+            )
+        );
     }
 }
 
@@ -186,44 +280,36 @@ class Paddle {
 
 class Game {
     constructor() {
-
         this.keys = {};
-
         this.playerScore = 0;
         this.cpuScore = 0;
 
         // Cinco pelotas de diferentes tamaños y colores
         this.balls = [
-
-            // Rosa chicle
             new Ball(
                 400, 180,
                 7, 4.0, 3.0,
                 "#ff4f9a"
             ),
 
-            // Rosa lila
             new Ball(
                 400, 240,
                 10, -3.7, 3.8,
                 "#e879f9"
             ),
 
-            // Fucsia
             new Ball(
                 400, 300,
                 13, 3.4, -3.5,
                 "#ec4899"
             ),
 
-            // Rosa coral
             new Ball(
                 400, 370,
                 9, -4.2, -2.9,
                 "#fb7185"
             ),
 
-            // Magenta
             new Ball(
                 400, 430,
                 6, 4.5, 3.6,
@@ -231,25 +317,24 @@ class Game {
             )
         ];
 
-        // Paleta del jugador
+        // Paleta del jugador: más grande
         this.paddle1 = new Paddle(
             22,
             245,
             13,
-        220,
+            220,
             "#db2777",
             6
         );
 
-        // Paleta de la computadora
-        // Es más alta y más rápida para cubrir más espacio
+        // Paleta del CPU: más pequeña, pero más rápida
         this.paddle2 = new Paddle(
             canvas.width - 35,
             225,
             13,
-            150,
+            110,
             "#a21caf",
-            7.2
+            13
         );
     }
 
@@ -279,10 +364,9 @@ class Game {
 
         ctx.restore();
 
-        // Dibujar las cinco pelotas
+        // Dibujar pelotas y paletas
         this.balls.forEach(ball => ball.draw());
 
-        // Dibujar ambas paletas
         this.paddle1.draw();
         this.paddle2.draw();
 
@@ -309,7 +393,6 @@ class Game {
     // ======================================
 
     checkCollision(ball, paddle, side) {
-
         const overlapsY =
             ball.y + ball.radius >= paddle.y &&
             ball.y - ball.radius <=
@@ -321,12 +404,12 @@ class Game {
                 paddle.x + paddle.width;
 
         if (!overlapsX || !overlapsY) {
-
-            // Permitir que la pelota vuelva a golpear
-            // una paleta después de separarse de ella
+            // Permitir que vuelva a golpear una paleta
+            // después de separarse de ella
             if (
                 side === "left" &&
-                ball.x > paddle.x + paddle.width + ball.radius
+                ball.x >
+                    paddle.x + paddle.width + ball.radius
             ) {
                 ball.lastPaddleHit = "";
             }
@@ -352,18 +435,17 @@ class Game {
 
             ball.speedX = Math.abs(ball.speedX);
 
-            // Cambiar el ángulo según el punto de impacto
             ball.speedY +=
                 (
                     (ball.y -
-                    (paddle.y + paddle.height / 2)) /
+                        (paddle.y + paddle.height / 2)) /
                     (paddle.height / 2)
                 ) * 0.8;
 
             ball.lastPaddleHit = "left";
         }
 
-        // Colisión con la paleta de la computadora
+        // Colisión con la paleta del CPU
         if (
             side === "right" &&
             ball.speedX > 0 &&
@@ -371,13 +453,13 @@ class Game {
         ) {
             ball.x = paddle.x - ball.radius;
 
-            // Devolver la pelota hacia el jugador
+            // Regresar pelota al jugador
             ball.speedX = -Math.abs(ball.speedX);
 
             ball.speedY +=
                 (
                     (ball.y -
-                    (paddle.y + paddle.height / 2)) /
+                        (paddle.y + paddle.height / 2)) /
                     (paddle.height / 2)
                 ) * 0.8;
 
@@ -390,8 +472,7 @@ class Game {
     // ======================================
 
     update() {
-
-        // Control del jugador
+        // Controles del jugador
         if (this.keys["ArrowUp"]) {
             this.paddle1.move("up");
         }
@@ -400,12 +481,11 @@ class Game {
             this.paddle1.move("down");
         }
 
-        // Movimiento de la CPU
+        // Movimiento automático del CPU
         this.paddle2.autoMove(this.balls);
 
-        // Actualizar cada pelota individualmente
+        // Actualizar cada pelota
         for (const ball of this.balls) {
-
             ball.move();
 
             this.checkCollision(
@@ -420,15 +500,13 @@ class Game {
                 "right"
             );
 
-            // La pelota salió por la izquierda:
-            // punto para la computadora
+            // Punto para CPU si la pelota sale por la izquierda
             if (ball.x + ball.radius < 0) {
                 this.cpuScore++;
                 ball.reset(1);
             }
 
-            // La pelota salió por la derecha:
-            // punto para el jugador
+            // Punto para jugador si la pelota sale por la derecha
             if (ball.x - ball.radius > canvas.width) {
                 this.playerScore++;
                 ball.reset(-1);
@@ -441,20 +519,20 @@ class Game {
     // ======================================
 
     resetGame() {
-
-        // Reiniciar marcador
         this.playerScore = 0;
         this.cpuScore = 0;
 
-        // Limpiar teclas presionadas
         this.keys = {};
 
-        // Regresar las cinco pelotas a sus posiciones
+        // Restaurar las pelotas
         this.balls.forEach(ball => {
             ball.resetToStart();
         });
 
-        // Regresar las paletas al centro
+        // Restaurar la altura original del CPU
+        this.paddle2.height = this.paddle2.baseHeight;
+
+        // Centrar las paletas
         this.paddle1.y =
             canvas.height / 2 -
             this.paddle1.height / 2;
@@ -469,9 +547,7 @@ class Game {
     // ======================================
 
     handleInput() {
-
         window.addEventListener("keydown", event => {
-
             if (
                 event.key === "ArrowUp" ||
                 event.key === "ArrowDown"
@@ -486,16 +562,17 @@ class Game {
             this.keys[event.key] = false;
         });
 
-        // Evitar que una tecla quede activa
-        // cuando se cambia de ventana
+        // Evitar teclas atascadas al cambiar de ventana
         window.addEventListener("blur", () => {
             this.keys = {};
         });
 
         // Botón de reinicio
-        restartButton.addEventListener("click", () => {
-            this.resetGame();
-        });
+        if (restartButton) {
+            restartButton.addEventListener("click", () => {
+                this.resetGame();
+            });
+        }
     }
 
     // ======================================
@@ -503,11 +580,9 @@ class Game {
     // ======================================
 
     run() {
-
         this.handleInput();
 
         const gameLoop = () => {
-
             this.update();
             this.draw();
 
@@ -523,5 +598,4 @@ class Game {
 // ======================================
 
 const game = new Game();
-
 game.run();
