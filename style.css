@@ -1,15 +1,23 @@
-/* Estilo general de la página */
+/* ========================================
+   PINK PONG - HOJA DE ESTILOS COMPLETA
+   ======================================== */
+
+/* Configuración general */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 body {
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    margin: 0;
     padding: 20px;
-    box-sizing: border-box;
 
-    /* Fondo en tonos rosas */
     background: linear-gradient(
         135deg,
         #fff0f6,
@@ -17,30 +25,198 @@ body {
         #f9a8d4
     );
 
-    font-family: Arial, sans-serif;
+    font-family: 'Nunito', Arial, sans-serif;
+    color: #831843;
 }
 
-/* Estilo del área de juego */
+/* Contenedor principal */
+.game-container {
+    width: min(100%, 800px);
+    text-align: center;
+}
+
+/* Encabezado */
+header {
+    margin-bottom: 20px;
+}
+
+.eyebrow {
+    margin-bottom: 5px;
+    color: #be185d;
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+}
+
+h1 {
+    margin: 0;
+    color: #be185d;
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+h1 span {
+    color: #ec4899;
+}
+
+header p:not(.eyebrow) {
+    margin-top: 8px;
+    color: #9d426d;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+/* Panel que contiene el juego */
+.game-panel {
+    padding: 12px;
+    border: 1px solid rgba(190, 24, 93, 0.14);
+    border-radius: 20px;
+
+    background: rgba(255, 255, 255, 0.78);
+
+    box-shadow: 0 18px 45px rgba(190, 24, 93, 0.18);
+}
+
+/* Área de juego */
 canvas {
     display: block;
-    max-width: 100%;
+    width: 100%;
     height: auto;
 
     border: 3px solid #ec4899;
     border-radius: 12px;
 
     background: #fff0f6;
-    box-shadow: 0 0 25px rgba(236, 72, 153, 0.35);
+
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.22);
 }
 
-/* Adaptación para pantallas pequeñas */
+/* Contenedor de botones */
+.game-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 13px;
+}
+
+/* Botón de reiniciar */
+#restartButton {
+    padding: 11px 22px;
+    border: none;
+    border-radius: 999px;
+
+    background: linear-gradient(
+        135deg,
+        #ec4899,
+        #be185d
+    );
+
+    color: #ffffff;
+    font-family: 'Nunito', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 900;
+
+    cursor: pointer;
+
+    box-shadow: 0 5px 14px rgba(190, 24, 93, 0.24);
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+}
+
+/* Efecto al pasar el cursor */
+#restartButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(190, 24, 93, 0.3);
+
+    background: linear-gradient(
+        135deg,
+        #f472b6,
+        #be185d
+    );
+}
+
+/* Efecto al presionar el botón */
+#restartButton:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 8px rgba(190, 24, 93, 0.2);
+}
+
+/* Instrucciones del juego */
+.instructions {
+    margin-top: 15px;
+    color: #9d426d;
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* Resalta las instrucciones al seleccionar texto */
+.instructions::selection {
+    background: #f9a8d4;
+    color: #831843;
+}
+
+/* Accesibilidad: navegación con teclado */
+#restartButton:focus-visible {
+    outline: 3px solid #831843;
+    outline-offset: 4px;
+}
+
+/* Adaptación para celulares y pantallas pequeñas */
 @media (max-width: 600px) {
     body {
         padding: 10px;
     }
 
-    canvas {
+    .game-container {
         width: 100%;
+    }
+
+    header {
+        margin-bottom: 14px;
+    }
+
+    .game-panel {
+        padding: 7px;
+        border-radius: 14px;
+    }
+
+    canvas {
+        border-width: 2px;
+        border-radius: 9px;
+    }
+
+    #restartButton {
+        padding: 10px 18px;
+        font-size: 0.92rem;
+    }
+
+    .instructions {
+        margin-top: 12px;
+        font-size: 0.85rem;
     }
 }
 
+/* Adaptación para pantallas muy pequeñas */
+@media (max-width: 360px) {
+    .eyebrow {
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+    }
+
+    header p:not(.eyebrow) {
+        font-size: 0.9rem;
+    }
+
+    .game-panel {
+        padding: 5px;
+    }
+
+    #restartButton {
+        width: 100%;
+    }
+}

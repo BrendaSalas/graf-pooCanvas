@@ -6,24 +6,34 @@
 
     <title>Pink Pong | Juego de Ping-Pong</title>
 
-    <!-- Conexión con el archivo CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
     <main class="game-container">
 
         <header>
+            <p class="eyebrow">ARCADE CLÁSICO · EDICIÓN ROSA</p>
             <h1>Pink <span>Pong</span></h1>
             <p>¡Cinco pelotas, mucha diversión! 💗</p>
         </header>
 
-        <canvas
-            id="gameCanvas"
-            width="800"
-            height="600">
-        </canvas>
+        <section class="game-panel">
+
+            <canvas
+                id="gameCanvas"
+                width="800"
+                height="600"
+                aria-label="Juego Pink Pong">
+            </canvas>
+
+            <div class="game-actions">
+                <button id="restartButton" type="button">
+                    ↻ Reiniciar partida
+                </button>
+            </div>
+
+        </section>
 
         <p class="instructions">
             Usa las flechas ↑ y ↓ para mover tu paleta.
@@ -31,7 +41,6 @@
 
     </main>
 
-    <!-- Conexión con el archivo JavaScript -->
     <script src="game.js"></script>
 
 </body>

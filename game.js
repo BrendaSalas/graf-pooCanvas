@@ -4,6 +4,7 @@
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const restartButton = document.getElementById("restartButton");
 
 // ======================================
 // CLASE PELOTA
@@ -11,18 +12,30 @@ const ctx = canvas.getContext("2d");
 
 class Ball {
     constructor(x, y, radius, speedX, speedY, color) {
-        this.x = x;
-        this.y = y;
+        this.startX = x;
+        this.startY = y;
+        this.startSpeedX = speedX;
+        this.startSpeedY = speedY;
+
         this.radius = radius;
-        this.speedX = speedX;
-        this.speedY = speedY;
         this.color = color;
+
+        this.resetToStart();
+    }
+
+    resetToStart() {
+        this.x = this.startX;
+        this.y = this.startY;
+
+        this.speedX = this.startSpeedX;
+        this.speedY = this.startSpeedY;
+
+        this.lastPaddleHit = "";
     }
 
     draw() {
         ctx.save();
 
-        // Brillo de la pelota
         ctx.shadowColor = this.color;
         ctx.shadowBlur = 12;
 
@@ -46,28 +59,34 @@ class Ball {
         this.x += this.speedX;
         this.y += this.speedY;
 
-        // Rebote en la parte superior e inferior
+        // Rebote contra la parte superior
         if (this.y - this.radius <= 0) {
             this.y = this.radius;
             this.speedY = Math.abs(this.speedY);
         }
 
+        // Rebote contra la parte inferior
         if (this.y + this.radius >= canvas.height) {
             this.y = canvas.height - this.radius;
             this.speedY = -Math.abs(this.speedY);
         }
     }
 
+    // Reiniciar una pelota cuando sale del campo
     reset(direction) {
         this.x = canvas.width / 2;
-        this.y = Math.random() *
-            (canvas.height - 100) + 50;
 
-        this.speedX = Math.abs(this.speedX) * direction;
+        this.y =
+            Math.random() * (canvas.height - 100) + 50;
+
+        this.speedX =
+            Math.abs(this.startSpeedX) * direction;
 
         this.speedY =
             (Math.random() < 0.5 ? -1 : 1) *
-            Math.max(2.5, Math.abs(this.speedY));
+            Math.max(2.5, Math.abs(this.startSpeedY));
+
+        this.lastPaddleHit = "";
     }
 }
 
@@ -76,13 +95,13 @@ class Ball {
 // ======================================
 
 class Paddle {
-    constructor(x, y, width, height, color) {
+    constructor(x, y, width, height, color, speed = 6) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
         this.color = color;
-        this.speed = 6;
+        this.speed = speed;
     }
 
     draw() {
@@ -90,6 +109,7 @@ class Paddle {
 
         ctx.shadowColor = this.color;
         ctx.shadowBlur = 12;
+
         ctx.fillStyle = this.color;
 
         ctx.beginPath();
@@ -124,24 +144,37 @@ class Paddle {
         );
     }
 
+    // Movimiento automático de la computadora
     autoMove(balls) {
-        // La computadora sigue la pelota que se
-        // encuentre más cerca de su paleta.
-        const approachingBalls = balls.filter(
-            ball => ball.speedX > 0
-        );
 
-        const target = approachingBalls.length > 0
-            ? approachingBalls.reduce((closest, ball) =>
-                ball.x > closest.x ? ball : closest
+        // Detectar las pelotas que se acercan a la CPU
+        const incoming = balls
+            .filter(ball =>
+                ball.speedX > 0 &&
+                ball.x < this.x
             )
-            : balls[0];
+            .map(ball => ({
+                ball: ball,
+                eta: (this.x - ball.x) / ball.speedX
+            }))
+            .sort((a, b) => a.eta - b.eta);
 
-        const center = this.y + this.height / 2;
+        // Si ninguna pelota se aproxima, esperar
+        if (incoming.length === 0) {
+            return;
+        }
 
-        if (target.y < center - 10) {
+        // Seguir la pelota que llegará primero
+        const target = incoming[0].ball;
+
+        const targetCenter = target.y;
+        const paddleCenter = this.y + this.height / 2;
+
+        const deadZone = 5;
+
+        if (targetCenter < paddleCenter - deadZone) {
             this.move("up");
-        } else if (target.y > center + 10) {
+        } else if (targetCenter > paddleCenter + deadZone) {
             this.move("down");
         }
     }
@@ -153,38 +186,46 @@ class Paddle {
 
 class Game {
     constructor() {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
 
-        // Las cinco pelotas, cada una con
-        // diferente tamaño, color y velocidad.
+        this.keys = {};
+
+        this.playerScore = 0;
+        this.cpuScore = 0;
+
+        // Cinco pelotas de diferentes tamaños y colores
         this.balls = [
+
+            // Rosa chicle
             new Ball(
-                centerX, centerY - 120,
-                7, 4, 3,
+                400, 180,
+                7, 4.0, 3.0,
                 "#ff4f9a"
             ),
 
+            // Rosa lila
             new Ball(
-                centerX, centerY - 60,
+                400, 240,
                 10, -3.7, 3.8,
                 "#e879f9"
             ),
 
+            // Fucsia
             new Ball(
-                centerX, centerY,
+                400, 300,
                 13, 3.4, -3.5,
                 "#ec4899"
             ),
 
+            // Rosa coral
             new Ball(
-                centerX, centerY + 70,
+                400, 370,
                 9, -4.2, -2.9,
                 "#fb7185"
             ),
 
+            // Magenta
             new Ball(
-                centerX, centerY + 130,
+                400, 430,
                 6, 4.5, 3.6,
                 "#be185d"
             )
@@ -193,39 +234,38 @@ class Game {
         // Paleta del jugador
         this.paddle1 = new Paddle(
             22,
-            centerY - 55,
+            245,
             13,
             110,
-            "#db2777"
+            "#db2777",
+            6
         );
 
         // Paleta de la computadora
+        // Es más alta y más rápida para cubrir más espacio
         this.paddle2 = new Paddle(
             canvas.width - 35,
-            centerY - 55,
+            225,
             13,
-            110,
-            "#a21caf"
+            150,
+            "#a21caf",
+            7.2
         );
-
-        this.keys = {};
-
-        this.playerScore = 0;
-        this.cpuScore = 0;
     }
 
     // ======================================
-    // DIBUJAR ELEMENTOS
+    // DIBUJAR EL JUEGO
     // ======================================
 
     draw() {
         ctx.clearRect(
-            0, 0,
+            0,
+            0,
             canvas.width,
             canvas.height
         );
 
-        // Línea central rosa
+        // Línea central
         ctx.save();
 
         ctx.strokeStyle = "#f3a6c8";
@@ -242,7 +282,7 @@ class Game {
         // Dibujar las cinco pelotas
         this.balls.forEach(ball => ball.draw());
 
-        // Dibujar las paletas
+        // Dibujar ambas paletas
         this.paddle1.draw();
         this.paddle2.draw();
 
@@ -265,10 +305,11 @@ class Game {
     }
 
     // ======================================
-    // DETECTAR COLISIONES
+    // COLISIONES ENTRE PELOTAS Y PALETAS
     // ======================================
 
     checkCollision(ball, paddle, side) {
+
         const overlapsY =
             ball.y + ball.radius >= paddle.y &&
             ball.y - ball.radius <=
@@ -280,32 +321,67 @@ class Game {
                 paddle.x + paddle.width;
 
         if (!overlapsX || !overlapsY) {
+
+            // Permitir que la pelota vuelva a golpear
+            // una paleta después de separarse de ella
+            if (
+                side === "left" &&
+                ball.x > paddle.x + paddle.width + ball.radius
+            ) {
+                ball.lastPaddleHit = "";
+            }
+
+            if (
+                side === "right" &&
+                ball.x < paddle.x - ball.radius
+            ) {
+                ball.lastPaddleHit = "";
+            }
+
             return;
         }
 
-        // Pelota contra la paleta izquierda
-        if (side === "left" && ball.speedX < 0) {
+        // Colisión con la paleta del jugador
+        if (
+            side === "left" &&
+            ball.speedX < 0 &&
+            ball.lastPaddleHit !== "left"
+        ) {
             ball.x =
                 paddle.x + paddle.width + ball.radius;
 
             ball.speedX = Math.abs(ball.speedX);
 
+            // Cambiar el ángulo según el punto de impacto
             ball.speedY +=
-                ((ball.y -
+                (
+                    (ball.y -
                     (paddle.y + paddle.height / 2)) /
-                    (paddle.height / 2)) * 0.8;
+                    (paddle.height / 2)
+                ) * 0.8;
+
+            ball.lastPaddleHit = "left";
         }
 
-        // Pelota contra la paleta derecha
-        if (side === "right" && ball.speedX > 0) {
+        // Colisión con la paleta de la computadora
+        if (
+            side === "right" &&
+            ball.speedX > 0 &&
+            ball.lastPaddleHit !== "right"
+        ) {
             ball.x = paddle.x - ball.radius;
 
+            // Devolver la pelota hacia el jugador
             ball.speedX = -Math.abs(ball.speedX);
 
             ball.speedY +=
-                ((ball.y -
+                (
+                    (ball.y -
                     (paddle.y + paddle.height / 2)) /
-                    (paddle.height / 2)) * 0.8;
+                    (paddle.height / 2)
+                ) * 0.8;
+
+            ball.lastPaddleHit = "right";
         }
     }
 
@@ -314,7 +390,8 @@ class Game {
     // ======================================
 
     update() {
-        // Movimiento del jugador
+
+        // Control del jugador
         if (this.keys["ArrowUp"]) {
             this.paddle1.move("up");
         }
@@ -323,11 +400,12 @@ class Game {
             this.paddle1.move("down");
         }
 
-        // Movimiento automático de la computadora
+        // Movimiento de la CPU
         this.paddle2.autoMove(this.balls);
 
-        // Actualizar cada pelota
-        this.balls.forEach(ball => {
+        // Actualizar cada pelota individualmente
+        for (const ball of this.balls) {
+
             ball.move();
 
             this.checkCollision(
@@ -342,18 +420,48 @@ class Game {
                 "right"
             );
 
-            // Punto para la computadora
+            // La pelota salió por la izquierda:
+            // punto para la computadora
             if (ball.x + ball.radius < 0) {
                 this.cpuScore++;
                 ball.reset(1);
             }
 
-            // Punto para el jugador
+            // La pelota salió por la derecha:
+            // punto para el jugador
             if (ball.x - ball.radius > canvas.width) {
                 this.playerScore++;
                 ball.reset(-1);
             }
+        }
+    }
+
+    // ======================================
+    // REINICIAR LA PARTIDA
+    // ======================================
+
+    resetGame() {
+
+        // Reiniciar marcador
+        this.playerScore = 0;
+        this.cpuScore = 0;
+
+        // Limpiar teclas presionadas
+        this.keys = {};
+
+        // Regresar las cinco pelotas a sus posiciones
+        this.balls.forEach(ball => {
+            ball.resetToStart();
         });
+
+        // Regresar las paletas al centro
+        this.paddle1.y =
+            canvas.height / 2 -
+            this.paddle1.height / 2;
+
+        this.paddle2.y =
+            canvas.height / 2 -
+            this.paddle2.height / 2;
     }
 
     // ======================================
@@ -361,7 +469,9 @@ class Game {
     // ======================================
 
     handleInput() {
+
         window.addEventListener("keydown", event => {
+
             if (
                 event.key === "ArrowUp" ||
                 event.key === "ArrowDown"
@@ -376,8 +486,15 @@ class Game {
             this.keys[event.key] = false;
         });
 
+        // Evitar que una tecla quede activa
+        // cuando se cambia de ventana
         window.addEventListener("blur", () => {
             this.keys = {};
+        });
+
+        // Botón de reinicio
+        restartButton.addEventListener("click", () => {
+            this.resetGame();
         });
     }
 
@@ -386,9 +503,11 @@ class Game {
     // ======================================
 
     run() {
+
         this.handleInput();
 
         const gameLoop = () => {
+
             this.update();
             this.draw();
 
@@ -404,4 +523,5 @@ class Game {
 // ======================================
 
 const game = new Game();
+
 game.run();
