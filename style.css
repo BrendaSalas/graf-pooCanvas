@@ -1,0 +1,46 @@
+/* Estilo general de la página */
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+
+    /* Fondo en tonos rosas */
+    background: linear-gradient(
+        135deg,
+        #fff0f6,
+        #fbcfe8,
+        #f9a8d4
+    );
+
+    font-family: Arial, sans-serif;
+}
+
+/* Estilo del área de juego */
+canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+
+    border: 3px solid #ec4899;
+    border-radius: 12px;
+
+    background: #fff0f6;
+    box-shadow: 0 0 25px rgba(236, 72, 153, 0.35);
+}
+
+/* Adaptación para pantallas pequeñas */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    canvas {
+        width: 100%;
+    }
+}
+
